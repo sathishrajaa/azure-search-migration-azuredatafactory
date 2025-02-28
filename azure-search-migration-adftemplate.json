@@ -1,0 +1,213 @@
+{
+    "name": "pipeline_azuresearchindex_migration",
+    "properties": {
+        "activities": [
+            {
+                "name": "ForEach_azuresearchindex_migration",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "Set AZDocument Count",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@range(0, add(div(variables('AZSearchDocsCount'), 1000), 1))",
+                        "type": "Expression"
+                    },
+                    "isSequential": true,
+                    "activities": [
+                        {
+                            "name": "Web_FetchAzureSearch_SRC",
+                            "type": "WebActivity",
+                            "dependsOn": [
+                                {
+                                    "activity": "Set Paging Value",
+                                    "dependencyConditions": [
+                                        "Completed"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "method": "GET",
+                                "headers": {
+                                    "Content-Type": "application/json",
+                                    "api-key": "<api-key-of-source-azure-search-index>"
+                                },
+                                "turnOffAsync": false,
+                                "url": {
+                                    "value": "@concat('https://<name-of-source-azure-search-service>.search.windows.net/indexes/<name-of-source-azure-search-index>/docs?api-version=2021-04-30-Preview&$top=1000', '&$skip=', variables('var_pagination_value'))",
+                                    "type": "Expression"
+                                },
+                                "connectVia": {
+                                    "referenceName": "<integration-runtime-name>",
+                                    "type": "IntegrationRuntimeReference"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Web_PushAzureSearch_Dest",
+                            "type": "WebActivity",
+                            "dependsOn": [
+                                {
+                                    "activity": "Set Input JSON variable",
+                                    "dependencyConditions": [
+                                        "Completed"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "method": "POST",
+                                "headers": {
+                                    "Content-Type": "application/json",
+                                    "api-key": "<api-key-of-destination-azure-search-index>"
+                                },
+                                "url": "https://<name-of-destination-azure-search-service>.search.windows.net/indexes/<name-of-destination-azure-search-index>/docs/index?api-version=2024-07-01&$search.action=mergeOrUpload",
+                                "connectVia": {
+                                    "referenceName": "<integration-runtime-name>",
+                                    "type": "IntegrationRuntimeReference"
+                                },
+                                "body": {
+                                    "value": "@json(variables('inputJson_vaue'))",
+                                    "type": "Expression"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Set Input JSON variable",
+                            "type": "SetVariable",
+                            "dependsOn": [
+                                {
+                                    "activity": "Web_FetchAzureSearch_SRC",
+                                    "dependencyConditions": [
+                                        "Completed"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "variableName": "inputJson_vaue",
+                                "value": {
+                                    "value": "@concat('{ \"value\":',activity('Web_FetchAzureSearch_SRC').output.value, '}')",
+                                    "type": "Expression"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Set Paging Value",
+                            "type": "SetVariable",
+                            "dependsOn": [],
+                            "policy": {
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "variableName": "var_pagination_value",
+                                "value": {
+                                    "value": "@string(mul(item(), 1000))",
+                                    "type": "Expression"
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "Web_FetchAzureSearch_Count",
+                "type": "WebActivity",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "api-key": "<api-key-of-source-azure-search-index>"
+                    },
+                    "turnOffAsync": false,
+                    "url": {
+                        "value": "https://<name-of-source-azure-search-service>.search.windows.net/indexes/<name-of-source-azure-search-index>/docs/$count?api-version=2021-04-30-Preview",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "<integration-runtime-name>",
+                        "type": "IntegrationRuntimeReference"
+                    }
+                }
+            },
+            {
+                "name": "Set AZDocument Count",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Web_FetchAzureSearch_Count",
+                        "dependencyConditions": [
+                            "Completed"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "AZSearchDocsCount",
+                    "value": {
+                        "value": "@int(activity('Web_FetchAzureSearch_Count').output.Response)",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ],
+        "variables": {
+            "inputJson_vaue": {
+                "type": "String"
+            },
+            "AZSearchDocsCount": {
+                "type": "Integer"
+            },
+            "var_pagination_value": {
+                "type": "String"
+            },
+            "Docs_Start_Date": {
+                "type": "String"
+            },
+            "Set Input JSON": {
+                "type": "String"
+            }
+        },
+        "annotations": []
+    }
+}
