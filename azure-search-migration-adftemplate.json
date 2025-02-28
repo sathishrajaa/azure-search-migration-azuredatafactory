@@ -44,7 +44,7 @@
                                 "method": "GET",
                                 "headers": {
                                     "Content-Type": "application/json",
-                                    "api-key": "<api-key-of-source-azure-search-index>"
+                                    "api-key": "<api-key-of-source-azure-search>"
                                 },
                                 "turnOffAsync": false,
                                 "url": {
@@ -80,7 +80,7 @@
                                 "method": "POST",
                                 "headers": {
                                     "Content-Type": "application/json",
-                                    "api-key": "<api-key-of-destination-azure-search-index>"
+                                    "api-key": "<api-key-of-destination-azure-search>"
                                 },
                                 "url": "https://<name-of-destination-azure-search-service>.search.windows.net/indexes/<name-of-destination-azure-search-index>/docs/index?api-version=2024-07-01&$search.action=mergeOrUpload",
                                 "connectVia": {
@@ -153,7 +153,7 @@
                     "method": "GET",
                     "headers": {
                         "Content-Type": "application/json",
-                        "api-key": "<api-key-of-source-azure-search-index>"
+                        "api-key": "<api-key-of-source-azure-search>"
                     },
                     "turnOffAsync": false,
                     "url": {
